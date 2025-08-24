@@ -1,0 +1,77 @@
+
+%% Azam CRM - Architecture Diagram (from TDS)
+flowchart TB
+  %% Direction
+  TB
+
+  %% === External Actor ===
+  U[User / Client Apps\n(Web, Mobile, Postman)]:::ext -->|HTTPS + JWT| G[API Endpoints\n(Spring MVC Controllers)]:::proc
+
+  %% === Cross-cutting (inside app) ===
+  subgraph X[Cross-cutting Concerns (in-app)]
+    TF[TracingFilter\n- JWT validate\n- Set UserContext attrs\n- MDC traceId/spanId]:::cross
+    UCR[UserContextResolver\n(Controller arg resolver)]:::cross
+    EXH[GlobalExceptionHandler\n(ApplicationException → GenericResponse)]:::cross
+    LOG[SLF4J + MDC]:::cross
+    VAL[Jakarta Validation]:::cross
+  end
+
+  U -->|requests pass through| TF --> G
+  TF --> UCR --> G
+  G -->|@Valid DTOs| VAL
+  G --> SVC[Service Layer\n(Business Orchestration)]:::proc
+
+  %% === Mapping & Transformations ===
+  subgraph M[Mapping & Composition]
+    MAP[MapStruct Mappers\n(Agent/Customer/User/MZ Mapping)]:::proc
+    TR[Response Transformer\n(ResponseBuilder → GenericResponse)]:::proc
+  end
+  G <-->|DTOs⇄Domain| MAP
+  SVC <-->|Domain⇄DTO| MAP
+  SVC --> TR
+
+  %% === Data Access ===
+  subgraph D[Persistence]
+    REP[Repository Interfaces\n(MyBatis @Mapper)]:::proc
+    XML[(MyBatis XML Mappers\nsrc/main/resources/mappers)]:::store
+    DB[(MySQL)]:::store
+  end
+  SVC --> REP
+  REP --> XML --> DB
+
+  %% === External Integrations via Feign ===
+  subgraph E[External Systems]
+    FEI[OpenFeign Clients\n(OnboardingClient, PlantInfoClient)]:::proc
+    CM[(CM Onboarding API)]:::ext
+    PL[(Plant Info API)]:::ext
+  end
+  SVC --> FEI
+  FEI --> CM
+  FEI --> PL
+
+  %% === Spring Cloud Runtime (optional) ===
+  subgraph C[Spring Cloud (optional at runtime)]
+    CFG[(Config Server Client)]:::cloud
+    EUR[(Eureka Client)]:::cloud
+    LB[(Spring Cloud LoadBalancer)]:::cloud
+  end
+
+  APP[Azam CRM Service\nSpring Boot 3 · Java 21]:::app
+  APP --- C
+  APP --- X
+  APP --- M
+  APP --- D
+  APP --- E
+
+  %% === Logging context wiring ===
+  LOG -. MDC context .- G
+  LOG -. MDC context .- SVC
+
+  %% === Styles ===
+  classDef ext fill:#eef,stroke:#446,font-weight:bold
+  classDef store fill:#ffe,stroke:#aa6
+  classDef proc fill:#e8fff1,stroke:#484
+  classDef cross fill:#fef,stroke:#a4a
+  classDef cloud fill:#eef7ff,stroke:#57a
+  classDef app fill:#fff,stroke:#000,stroke-width:2px
+
