@@ -1,6 +1,71 @@
 flowchart TB
-  U["User / Client Apps (Web, Mobile, Postman)"] --> G["API Endpoints (Spring MVC Controllers)"]
-  G --> SVC["Service Layer (Business Orchestration)"]
-  SVC --> DB["MySQL Database"]
-  SVC --> CM["CM Onboarding API"]
-  SVC --> PL["Plant Info API"]
+  %% External Actor
+  U["User / Client Apps (Web, Mobile, Postman)"]:::ext -->|HTTPS + JWT| G["API Endpoints (Spring MVC Controllers)"]:::proc
+
+  %% Cross-cutting
+  subgraph X["Cross-cutting Concerns (in-app)"]
+    TF["TracingFilter - JWT validate, UserContext, MDC traceId/spanId"]:::cross
+    UCR["UserContextResolver (Controller arg resolver)"]:::cross
+    EXH["GlobalExceptionHandler (ApplicationException → GenericResponse)"]:::cross
+    LOG["SLF4J + MDC"]:::cross
+    VAL["Jakarta Validation"]:::cross
+  end
+
+  U -->|requests pass through| TF --> G
+  TF --> UCR --> G
+  G -->|@Valid DTOs| VAL
+  G --> SVC["Service Layer (Business Orchestration)"]:::proc
+
+  %% Mapping
+  subgraph M["Mapping & Composition"]
+    MAP["MapStruct Mappers (Agent/Customer/User/MZ Mapping)"]:::proc
+    TR["Response Transformer (ResponseBuilder → GenericResponse)"]:::proc
+  end
+  G <-->|DTOs⇄Domain| MAP
+  SVC <-->|Domain⇄DTO| MAP
+  SVC --> TR
+
+  %% Data Access
+  subgraph D["Persistence"]
+    REP["Repository Interfaces (MyBatis @Mapper)"]:::proc
+    XML["MyBatis XML Mappers (resources/mappers)"]:::store
+    DB["MySQL Database"]:::store
+  end
+  SVC --> REP
+  REP --> XML --> DB
+
+  %% External Systems
+  subgraph E["External Systems"]
+    FEI["OpenFeign Clients (OnboardingClient, PlantInfoClient)"]:::proc
+    CM["CM Onboarding API"]:::ext
+    PL["Plant Info API"]:::ext
+  end
+  SVC --> FEI
+  FEI --> CM
+  FEI --> PL
+
+  %% Spring Cloud
+  subgraph C["Spring Cloud (optional)"]
+    CFG["Config Server Client"]:::cloud
+    EUR["Eureka Client"]:::cloud
+    LB["Spring Cloud LoadBalancer"]:::cloud
+  end
+
+  APP["Azam CRM Service - Spring Boot 3, Java 21"]:::app
+  APP --- C
+  APP --- X
+  APP --- M
+  APP --- D
+  APP --- E
+
+  %% Logging
+  LOG -. "MDC context" .- G
+  LOG -. "MDC context" .- SVC
+
+  %% Styles
+  classDef ext fill:#eef,stroke:#446,font-weight:bold
+  classDef store fill:#ffe,stroke:#aa6
+  classDef proc fill:#e8fff1,stroke:#484
+  classDef cross fill:#fef,stroke:#a4a
+  classDef cloud fill:#eef7ff,stroke:#57a
+  classDef app fill:#fff,stroke:#000,stroke-width:2px
