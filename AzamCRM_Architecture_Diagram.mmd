@@ -1,66 +1,64 @@
 flowchart TB
-  %% External Actor
-  U["User / Client Apps (Web, Mobile, Postman)"]:::ext -->|HTTPS + JWT| G["API Endpoints (Spring MVC Controllers)"]:::proc
+  U["User / Client Apps (Web, Mobile, Postman)"]:::ext --> G["API Endpoints (Spring MVC Controllers)"]:::proc
 
-  %% Cross-cutting
-  subgraph X["Cross-cutting Concerns (in-app)"]
-    TF["TracingFilter - JWT validate, UserContext, MDC traceId/spanId"]:::cross
-    UCR["UserContextResolver (Controller arg resolver)"]:::cross
-    EXH["GlobalExceptionHandler (ApplicationException → GenericResponse)"]:::cross
-    LOG["SLF4J + MDC"]:::cross
-    VAL["Jakarta Validation"]:::cross
-  end
+  %% Cross-cutting Concerns
+  TF["TracingFilter - JWT validate, UserContext, MDC traceId/spanId"]:::cross
+  UCR["UserContextResolver (Controller arg resolver)"]:::cross
+  EXH["GlobalExceptionHandler (ApplicationException → GenericResponse)"]:::cross
+  LOG["SLF4J + MDC"]:::cross
+  VAL["Jakarta Validation"]:::cross
 
-  U -->|requests pass through| TF --> G
-  TF --> UCR --> G
-  G -->|@Valid DTOs| VAL
+  U --> TF
+  TF --> UCR
+  UCR --> G
+  G --> VAL
   G --> SVC["Service Layer (Business Orchestration)"]:::proc
 
   %% Mapping
-  subgraph M["Mapping & Composition"]
-    MAP["MapStruct Mappers (Agent/Customer/User/MZ Mapping)"]:::proc
-    TR["Response Transformer (ResponseBuilder → GenericResponse)"]:::proc
-  end
-  G <-->|DTOs⇄Domain| MAP
-  SVC <-->|Domain⇄DTO| MAP
+  MAP["MapStruct Mappers (Agent/Customer/User/MZ Mapping)"]:::proc
+  TR["Response Transformer (ResponseBuilder → GenericResponse)"]:::proc
+  G --> MAP
+  SVC --> MAP
   SVC --> TR
 
-  %% Data Access
-  subgraph D["Persistence"]
-    REP["Repository Interfaces (MyBatis @Mapper)"]:::proc
-    XML["MyBatis XML Mappers (resources/mappers)"]:::store
-    DB["MySQL Database"]:::store
-  end
+  %% Persistence
+  REP["Repository Interfaces (MyBatis @Mapper)"]:::proc
+  XML["MyBatis XML Mappers (resources/mappers)"]:::store
+  DB["MySQL Database"]:::store
   SVC --> REP
-  REP --> XML --> DB
+  REP --> XML
+  XML --> DB
 
   %% External Systems
-  subgraph E["External Systems"]
-    FEI["OpenFeign Clients (OnboardingClient, PlantInfoClient)"]:::proc
-    CM["CM Onboarding API"]:::ext
-    PL["Plant Info API"]:::ext
-  end
+  FEI["OpenFeign Clients (OnboardingClient, PlantInfoClient)"]:::proc
+  CM["CM Onboarding API"]:::ext
+  PL["Plant Info API"]:::ext
   SVC --> FEI
   FEI --> CM
   FEI --> PL
 
   %% Spring Cloud
-  subgraph C["Spring Cloud (optional)"]
-    CFG["Config Server Client"]:::cloud
-    EUR["Eureka Client"]:::cloud
-    LB["Spring Cloud LoadBalancer"]:::cloud
-  end
+  CFG["Config Server Client"]:::cloud
+  EUR["Eureka Client"]:::cloud
+  LB["Spring Cloud LoadBalancer"]:::cloud
 
   APP["Azam CRM Service - Spring Boot 3, Java 21"]:::app
-  APP --- C
-  APP --- X
-  APP --- M
-  APP --- D
-  APP --- E
-
-  %% Logging
-  LOG -. "MDC context" .- G
-  LOG -. "MDC context" .- SVC
+  APP --- CFG
+  APP --- EUR
+  APP --- LB
+  APP --- TF
+  APP --- UCR
+  APP --- EXH
+  APP --- LOG
+  APP --- VAL
+  APP --- MAP
+  APP --- TR
+  APP --- REP
+  APP --- XML
+  APP --- DB
+  APP --- FEI
+  APP --- CM
+  APP --- PL
 
   %% Styles
   classDef ext fill:#eef,stroke:#446,font-weight:bold
