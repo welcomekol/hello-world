@@ -1,17 +1,12 @@
-
-%% Azam CRM - Architecture Diagram (from TDS)
 flowchart TB
-  %% Direction
-  TB
-
   %% === External Actor ===
-  U[User / Client Apps\n(Web, Mobile, Postman)]:::ext -->|HTTPS + JWT| G[API Endpoints\n(Spring MVC Controllers)]:::proc
+  U[User / Client Apps<br/>(Web, Mobile, Postman)]:::ext -->|HTTPS + JWT| G[API Endpoints<br/>(Spring MVC Controllers)]:::proc
 
   %% === Cross-cutting (inside app) ===
   subgraph X[Cross-cutting Concerns (in-app)]
-    TF[TracingFilter\n- JWT validate\n- Set UserContext attrs\n- MDC traceId/spanId]:::cross
-    UCR[UserContextResolver\n(Controller arg resolver)]:::cross
-    EXH[GlobalExceptionHandler\n(ApplicationException → GenericResponse)]:::cross
+    TF[TracingFilter<br/>- JWT validate<br/>- Set UserContext attrs<br/>- MDC traceId/spanId]:::cross
+    UCR[UserContextResolver<br/>(Controller arg resolver)]:::cross
+    EXH[GlobalExceptionHandler<br/>(ApplicationException → GenericResponse)]:::cross
     LOG[SLF4J + MDC]:::cross
     VAL[Jakarta Validation]:::cross
   end
@@ -19,12 +14,12 @@ flowchart TB
   U -->|requests pass through| TF --> G
   TF --> UCR --> G
   G -->|@Valid DTOs| VAL
-  G --> SVC[Service Layer\n(Business Orchestration)]:::proc
+  G --> SVC[Service Layer<br/>(Business Orchestration)]:::proc
 
   %% === Mapping & Transformations ===
   subgraph M[Mapping & Composition]
-    MAP[MapStruct Mappers\n(Agent/Customer/User/MZ Mapping)]:::proc
-    TR[Response Transformer\n(ResponseBuilder → GenericResponse)]:::proc
+    MAP[MapStruct Mappers<br/>(Agent/Customer/User/MZ Mapping)]:::proc
+    TR[Response Transformer<br/>(ResponseBuilder → GenericResponse)]:::proc
   end
   G <-->|DTOs⇄Domain| MAP
   SVC <-->|Domain⇄DTO| MAP
@@ -32,8 +27,8 @@ flowchart TB
 
   %% === Data Access ===
   subgraph D[Persistence]
-    REP[Repository Interfaces\n(MyBatis @Mapper)]:::proc
-    XML[(MyBatis XML Mappers\nsrc/main/resources/mappers)]:::store
+    REP[Repository Interfaces<br/>(MyBatis @Mapper)]:::proc
+    XML[(MyBatis XML Mappers<br/>src/main/resources/mappers)]:::store
     DB[(MySQL)]:::store
   end
   SVC --> REP
@@ -41,7 +36,7 @@ flowchart TB
 
   %% === External Integrations via Feign ===
   subgraph E[External Systems]
-    FEI[OpenFeign Clients\n(OnboardingClient, PlantInfoClient)]:::proc
+    FEI[OpenFeign Clients<br/>(OnboardingClient, PlantInfoClient)]:::proc
     CM[(CM Onboarding API)]:::ext
     PL[(Plant Info API)]:::ext
   end
@@ -56,7 +51,7 @@ flowchart TB
     LB[(Spring Cloud LoadBalancer)]:::cloud
   end
 
-  APP[Azam CRM Service\nSpring Boot 3 · Java 21]:::app
+  APP[Azam CRM Service<br/>Spring Boot 3 · Java 21]:::app
   APP --- C
   APP --- X
   APP --- M
@@ -74,4 +69,3 @@ flowchart TB
   classDef cross fill:#fef,stroke:#a4a
   classDef cloud fill:#eef7ff,stroke:#57a
   classDef app fill:#fff,stroke:#000,stroke-width:2px
-
